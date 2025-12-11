@@ -2,8 +2,8 @@ name: Threads Auto Post
 
 on:
   schedule:
-    - cron: '30 23 * * *'   # 日本時間 朝8:30
-    - cron: '30 9 * * *'    # 日本時間 夜18:30
+    - cron: '30 23 * * *'
+    - cron: '30 9 * * *'
   workflow_dispatch:
 
 jobs:
@@ -40,9 +40,10 @@ jobs:
 
 ---
 
-## ステップ8-5: imagesフォルダを作成
+**または、別の方法**：
 
-1. 「**Add file**」→「**Create new file**」をクリック
-2. ファイル名に以下を入力：
+1. リポジトリトップページに戻る
+2. 「**Add file**」→「**Create new file**」
+3. ファイル名に **完全なパス** を入力：
 ```
-images/.gitkeep
+.github/workflows/post.yml
