@@ -34,16 +34,3 @@ jobs:
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
           python threads_bot.py
-```
-
-4. 「**Commit new file**」をクリック
-
----
-
-**または、別の方法**：
-
-1. リポジトリトップページに戻る
-2. 「**Add file**」→「**Create new file**」
-3. ファイル名に **完全なパス** を入力：
-```
-.github/workflows/post.yml
