@@ -1,1 +1,48 @@
+name: Threads Auto Post
 
+on:
+  schedule:
+    - cron: '30 23 * * *'   # 日本時間 朝8:30
+    - cron: '30 9 * * *'    # 日本時間 夜18:30
+  workflow_dispatch:
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests gspread google-auth cloudinary
+      
+      - name: Run Threads bot
+        env:
+          THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_NAME: ${{ secrets.SPREADSHEET_NAME }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: |
+          python threads_bot.py
+```
+
+4. 「**Commit new file**」をクリック
+
+---
+
+## ステップ8-5: imagesフォルダを作成
+
+1. 「**Add file**」→「**Create new file**」をクリック
+2. ファイル名に以下を入力：
+```
+images/.gitkeep
