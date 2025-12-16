@@ -2,8 +2,7 @@ name: Threads Auto Post
 
 on:
   schedule:
-    - cron: '30 23 * * *'
-    - cron: '30 9 * * *'
+    - cron: '30 9 * * *'    # 日本時間 夜18:30
   workflow_dispatch:
 
 jobs:
