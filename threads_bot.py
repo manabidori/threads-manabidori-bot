@@ -1,4 +1,3 @@
-
 import os
 import sys
 import gspread
@@ -167,27 +166,29 @@ class ThreadsBot:
         """Threadsに投稿"""
         image_url = None
         
-        if image_path:
-            image_path = image_path.strip()
+        # 画像パスの処理を改善（空文字列チェックを強化）
+        if image_path and str(image_path).strip():
+            image_path = str(image_path).strip()
             
             if image_path.startswith('http'):
                 image_url = image_path
                 print(f"  🌐 公開URL使用: {image_url}")
-            elif image_path:
+            else:
                 image_url = self.upload_image_to_cloudinary(image_path)
         
         url = f"https://graph.threads.net/v1.0/{self.user_id}/threads"
         params = {
             "text": text,
-            "access_token": self.access_token
+            "access_token": self.access_token,
+            "media_type": "TEXT"  # デフォルトはテキスト
         }
         
-        if image_url:
+        # 画像URLが有効な場合のみ画像パラメータを追加
+        if image_url and len(image_url) > 0:
             params["media_type"] = "IMAGE"
             params["image_url"] = image_url
             print(f"  📷 画像付き投稿")
         else:
-            params["media_type"] = "TEXT"
             print(f"  📝 テキストのみ投稿")
         
         response = requests.post(url, data=params)
@@ -223,26 +224,27 @@ class ThreadsBot:
         """リプライとして投稿"""
         image_url = None
         
-        if image_path:
-            image_path = image_path.strip()
+        # 画像パスの処理を改善（空文字列チェックを強化）
+        if image_path and str(image_path).strip():
+            image_path = str(image_path).strip()
             
             if image_path.startswith('http'):
                 image_url = image_path
-            elif image_path:
+            else:
                 image_url = self.upload_image_to_cloudinary(image_path)
         
         url = f"https://graph.threads.net/v1.0/{self.user_id}/threads"
         params = {
             "text": text,
             "reply_to_id": reply_to_id,
-            "access_token": self.access_token
+            "access_token": self.access_token,
+            "media_type": "TEXT"  # デフォルトはテキスト
         }
         
-        if image_url:
+        # 画像URLが有効な場合のみ画像パラメータを追加
+        if image_url and len(image_url) > 0:
             params["media_type"] = "IMAGE"
             params["image_url"] = image_url
-        else:
-            params["media_type"] = "TEXT"
         
         response = requests.post(url, data=params)
         
