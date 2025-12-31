@@ -178,7 +178,7 @@ class ThreadsBot:
     def post_to_threads(self, text, media_path=None):
         """Threadsに投稿（画像または動画）"""
         media_url = None
-        media_type = "TEXT"
+        media_type = None
         
         # メディアパスの処理
         if media_path and str(media_path).strip():
@@ -201,12 +201,11 @@ class ThreadsBot:
         url = f"https://graph.threads.net/v1.0/{self.user_id}/threads"
         params = {
             "text": text,
-            "access_token": self.access_token,
-            "media_type": "TEXT"
+            "access_token": self.access_token
         }
         
-        # メディアURLが有効な場合
-        if media_url and len(media_url) > 0:
+        # メディアURLが有効な場合のみパラメータを追加
+        if media_url and media_type:
             params["media_type"] = media_type
             if media_type == "VIDEO":
                 params["video_url"] = media_url
@@ -215,6 +214,7 @@ class ThreadsBot:
                 params["image_url"] = media_url
                 print(f"  📷 画像付き投稿")
         else:
+            params["media_type"] = "TEXT"
             print(f"  📝 テキストのみ投稿")
         
         response = requests.post(url, data=params)
@@ -253,11 +253,12 @@ class ThreadsBot:
     def post_reply(self, text, reply_to_id, media_path=None):
         """リプライとして投稿（画像または動画）"""
         media_url = None
-        media_type = "TEXT"
+        media_type = None
         
-        # メディアパスの処理
+        # メディアパスの処理（完全に空の場合はスキップ）
         if media_path and str(media_path).strip():
             media_path = str(media_path).strip()
+            print(f"  📎 リプライにメディアを添付: {media_path}")
             
             if media_path.startswith('http'):
                 media_url = media_path
@@ -267,22 +268,26 @@ class ThreadsBot:
                     media_type = "IMAGE"
             else:
                 media_url, media_type = self.upload_media_to_cloudinary(media_path)
+        else:
+            print(f"  📝 リプライ（テキストのみ）")
         
         url = f"https://graph.threads.net/v1.0/{self.user_id}/threads"
         params = {
             "text": text,
             "reply_to_id": reply_to_id,
-            "access_token": self.access_token,
-            "media_type": "TEXT"
+            "access_token": self.access_token
         }
         
-        # メディアURLが有効な場合
-        if media_url and len(media_url) > 0:
+        # メディアがある場合のみmedia_typeとURLを追加
+        if media_url and media_type:
             params["media_type"] = media_type
             if media_type == "VIDEO":
                 params["video_url"] = media_url
             else:
                 params["image_url"] = media_url
+        else:
+            # メディアがない場合は明示的にTEXTを指定
+            params["media_type"] = "TEXT"
         
         response = requests.post(url, data=params)
         
@@ -291,11 +296,14 @@ class ThreadsBot:
             return None
         
         container_id = response.json()['id']
+        print(f"  📦 リプライコンテナID: {container_id}")
         
         # 動画の場合は待機時間を長く
         if media_type == "VIDEO":
+            print("  ⏳ 動画処理中...")
             time.sleep(30)
         elif media_url:
+            print("  ⏳ 画像処理中...")
             time.sleep(5)
         
         publish_url = f"https://graph.threads.net/v1.0/{self.user_id}/threads_publish"
