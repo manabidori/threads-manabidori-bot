@@ -123,22 +123,35 @@ class ThreadsBot:
         
         return True
     
-    def upload_image_to_cloudinary(self, image_path):
-        """ローカル画像をCloudinaryにアップロード"""
-        if not os.path.exists(image_path):
-            print(f"  ⚠️ 画像ファイルが見つかりません: {image_path}")
-            return None
+    def is_video_file(self, file_path):
+        """ファイルが動画かどうかを判定"""
+        video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv']
+        file_ext = os.path.splitext(file_path.lower())[1]
+        return file_ext in video_extensions
+    
+    def upload_media_to_cloudinary(self, media_path):
+        """画像または動画をCloudinaryにアップロード"""
+        if not os.path.exists(media_path):
+            print(f"  ⚠️ ファイルが見つかりません: {media_path}")
+            return None, None
         
-        print(f"  📤 Cloudinaryに画像をアップロード中: {image_path}")
+        is_video = self.is_video_file(media_path)
+        media_type = "動画" if is_video else "画像"
+        
+        print(f"  📤 Cloudinaryに{media_type}をアップロード中: {media_path}")
         
         try:
-            result = cloudinary.uploader.upload(image_path)
+            upload_params = {}
+            if is_video:
+                upload_params['resource_type'] = 'video'
+            
+            result = cloudinary.uploader.upload(media_path, **upload_params)
             url = result['secure_url']
             print(f"  ✅ アップロード成功: {url}")
-            return url
+            return url, 'VIDEO' if is_video else 'IMAGE'
         except Exception as e:
             print(f"  ❌ アップロード失敗: {e}")
-            return None
+            return None, None
     
     def get_unposted_groups(self, records):
         """未投稿データをグループ化"""
@@ -162,32 +175,45 @@ class ThreadsBot:
         
         return groups
     
-    def post_to_threads(self, text, image_path=None):
-        """Threadsに投稿"""
-        image_url = None
+    def post_to_threads(self, text, media_path=None):
+        """Threadsに投稿（画像または動画）"""
+        media_url = None
+        media_type = "TEXT"
         
-        # 画像パスの処理を改善（空文字列チェックを強化）
-        if image_path and str(image_path).strip():
-            image_path = str(image_path).strip()
+        # メディアパスの処理
+        if media_path and str(media_path).strip():
+            media_path = str(media_path).strip()
             
-            if image_path.startswith('http'):
-                image_url = image_path
-                print(f"  🌐 公開URL使用: {image_url}")
+            if media_path.startswith('http'):
+                # 公開URLの場合
+                media_url = media_path
+                # URLから動画かどうかを判定
+                if self.is_video_file(media_url):
+                    media_type = "VIDEO"
+                    print(f"  🌐 公開動画URL使用: {media_url}")
+                else:
+                    media_type = "IMAGE"
+                    print(f"  🌐 公開画像URL使用: {media_url}")
             else:
-                image_url = self.upload_image_to_cloudinary(image_path)
+                # ローカルファイルの場合
+                media_url, media_type = self.upload_media_to_cloudinary(media_path)
         
         url = f"https://graph.threads.net/v1.0/{self.user_id}/threads"
         params = {
             "text": text,
             "access_token": self.access_token,
-            "media_type": "TEXT"  # デフォルトはテキスト
+            "media_type": "TEXT"
         }
         
-        # 画像URLが有効な場合のみ画像パラメータを追加
-        if image_url and len(image_url) > 0:
-            params["media_type"] = "IMAGE"
-            params["image_url"] = image_url
-            print(f"  📷 画像付き投稿")
+        # メディアURLが有効な場合
+        if media_url and len(media_url) > 0:
+            params["media_type"] = media_type
+            if media_type == "VIDEO":
+                params["video_url"] = media_url
+                print(f"  🎬 動画付き投稿")
+            else:
+                params["image_url"] = media_url
+                print(f"  📷 画像付き投稿")
         else:
             print(f"  📝 テキストのみ投稿")
         
@@ -200,7 +226,11 @@ class ThreadsBot:
         container_id = response.json()['id']
         print(f"  📦 コンテナID: {container_id}")
         
-        if image_url:
+        # 動画の場合は処理時間が長いので待機
+        if media_type == "VIDEO":
+            print("  ⏳ 動画処理中（最大30秒待機）...")
+            time.sleep(30)
+        elif media_url:
             print("  ⏳ 画像処理中...")
             time.sleep(5)
         
@@ -220,31 +250,39 @@ class ThreadsBot:
             print(f"  ❌ 公開失敗: {publish_response.text}")
             return None
     
-    def post_reply(self, text, reply_to_id, image_path=None):
-        """リプライとして投稿"""
-        image_url = None
+    def post_reply(self, text, reply_to_id, media_path=None):
+        """リプライとして投稿（画像または動画）"""
+        media_url = None
+        media_type = "TEXT"
         
-        # 画像パスの処理を改善（空文字列チェックを強化）
-        if image_path and str(image_path).strip():
-            image_path = str(image_path).strip()
+        # メディアパスの処理
+        if media_path and str(media_path).strip():
+            media_path = str(media_path).strip()
             
-            if image_path.startswith('http'):
-                image_url = image_path
+            if media_path.startswith('http'):
+                media_url = media_path
+                if self.is_video_file(media_url):
+                    media_type = "VIDEO"
+                else:
+                    media_type = "IMAGE"
             else:
-                image_url = self.upload_image_to_cloudinary(image_path)
+                media_url, media_type = self.upload_media_to_cloudinary(media_path)
         
         url = f"https://graph.threads.net/v1.0/{self.user_id}/threads"
         params = {
             "text": text,
             "reply_to_id": reply_to_id,
             "access_token": self.access_token,
-            "media_type": "TEXT"  # デフォルトはテキスト
+            "media_type": "TEXT"
         }
         
-        # 画像URLが有効な場合のみ画像パラメータを追加
-        if image_url and len(image_url) > 0:
-            params["media_type"] = "IMAGE"
-            params["image_url"] = image_url
+        # メディアURLが有効な場合
+        if media_url and len(media_url) > 0:
+            params["media_type"] = media_type
+            if media_type == "VIDEO":
+                params["video_url"] = media_url
+            else:
+                params["image_url"] = media_url
         
         response = requests.post(url, data=params)
         
@@ -254,7 +292,10 @@ class ThreadsBot:
         
         container_id = response.json()['id']
         
-        if image_url:
+        # 動画の場合は待機時間を長く
+        if media_type == "VIDEO":
+            time.sleep(30)
+        elif media_url:
             time.sleep(5)
         
         publish_url = f"https://graph.threads.net/v1.0/{self.user_id}/threads_publish"
@@ -322,20 +363,20 @@ class ThreadsBot:
         
         for idx, post in enumerate(selected_posts):
             post_text = post['text']
-            image_path = post.get('image_path', '').strip()
+            media_path = post.get('image_path', '').strip()
             row_index = post['row_index']
             
             print(f"\n{'='*50}")
             print(f"投稿 {idx+1}/{len(selected_posts)} (行: {row_index})")
             print(f"テキスト: {post_text[:50]}...")
-            if image_path:
-                print(f"画像: {image_path}")
+            if media_path:
+                print(f"メディア: {media_path}")
             
             try:
                 if idx == 0:
                     thread_id = self.post_to_threads(
                         post_text,
-                        image_path if image_path else None
+                        media_path if media_path else None
                     )
                     
                     if thread_id:
@@ -356,7 +397,7 @@ class ThreadsBot:
                     reply_id = self.post_reply(
                         post_text,
                         previous_thread_id,
-                        image_path if image_path else None
+                        media_path if media_path else None
                     )
                     
                     if reply_id:
