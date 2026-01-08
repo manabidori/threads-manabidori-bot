@@ -153,6 +153,19 @@ class ThreadsBot:
             print(f"  ❌ アップロード失敗: {e}")
             return None, None
     
+    def has_valid_media(self, media_path):
+        """メディアパスが有効かどうかを厳格にチェック"""
+        if media_path is None:
+            return False
+        if media_path == "":
+            return False
+        if not isinstance(media_path, str):
+            media_path = str(media_path)
+        media_path = media_path.strip()
+        if len(media_path) == 0:
+            return False
+        return True
+    
     def get_unposted_groups(self, records):
         """未投稿データをグループ化"""
         groups = {}
@@ -180,8 +193,8 @@ class ThreadsBot:
         media_url = None
         media_type = None
         
-        # メディアパスの処理
-        if media_path and str(media_path).strip():
+        # メディアパスの厳格なチェック
+        if self.has_valid_media(media_path):
             media_path = str(media_path).strip()
             
             if media_path.startswith('http'):
@@ -204,7 +217,7 @@ class ThreadsBot:
             "access_token": self.access_token
         }
         
-        # メディアURLが有効な場合のみパラメータを追加
+        # メディアURLとmedia_typeの両方が有効な場合のみパラメータを追加
         if media_url and media_type:
             params["media_type"] = media_type
             if media_type == "VIDEO":
@@ -255,8 +268,8 @@ class ThreadsBot:
         media_url = None
         media_type = None
         
-        # メディアパスの処理（完全に空の場合はスキップ）
-        if media_path and str(media_path).strip():
+        # メディアパスの厳格なチェック
+        if self.has_valid_media(media_path):
             media_path = str(media_path).strip()
             print(f"  📎 リプライにメディアを添付: {media_path}")
             
@@ -278,7 +291,7 @@ class ThreadsBot:
             "access_token": self.access_token
         }
         
-        # メディアがある場合のみmedia_typeとURLを追加
+        # メディアURLとmedia_typeの両方が有効な場合のみパラメータを追加
         if media_url and media_type:
             params["media_type"] = media_type
             if media_type == "VIDEO":
@@ -286,7 +299,6 @@ class ThreadsBot:
             else:
                 params["image_url"] = media_url
         else:
-            # メディアがない場合は明示的にTEXTを指定
             params["media_type"] = "TEXT"
         
         response = requests.post(url, data=params)
@@ -371,20 +383,20 @@ class ThreadsBot:
         
         for idx, post in enumerate(selected_posts):
             post_text = post['text']
-            media_path = post.get('image_path', '').strip()
+            media_path = post.get('image_path', '')
             row_index = post['row_index']
             
             print(f"\n{'='*50}")
             print(f"投稿 {idx+1}/{len(selected_posts)} (行: {row_index})")
             print(f"テキスト: {post_text[:50]}...")
-            if media_path:
+            if self.has_valid_media(media_path):
                 print(f"メディア: {media_path}")
             
             try:
                 if idx == 0:
                     thread_id = self.post_to_threads(
                         post_text,
-                        media_path if media_path else None
+                        media_path if self.has_valid_media(media_path) else None
                     )
                     
                     if thread_id:
@@ -405,7 +417,7 @@ class ThreadsBot:
                     reply_id = self.post_reply(
                         post_text,
                         previous_thread_id,
-                        media_path if media_path else None
+                        media_path if self.has_valid_media(media_path) else None
                     )
                     
                     if reply_id:
